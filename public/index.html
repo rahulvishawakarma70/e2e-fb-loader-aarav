@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>FB Offline Message Sender</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui,Arial;max-width:900px;margin:18px auto;padding:12px}
+    textarea{width:100%;min-height:120px;padding:10px}
+    input,button,select{padding:8px;margin:6px 0;width:100%}
+    .row{display:flex;gap:8px}
+    .col{flex:1}
+    pre{background:#f6f8fa;padding:10px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <h1>FB Offline Message Sender</h1>
+  <p>Queue a message to be sent by the server's logged-in Messenger session.</p>
+
+  <label>Recipient thread ID or username (the part after /t/)</label>
+  <input id="toThreadId" placeholder="e.g. 1234567890 or some.username">
+
+  <label>Message</label>
+  <textarea id="text">Hello — this message was queued while offline.</textarea>
+
+  <button id="sendBtn">Queue Message</button>
+
+  <h3>Queue</h3>
+  <pre id="queue">Loading…</pre>
+
+  <script>
+    async function loadQueue(){
+      const r = await fetch('/api/queue');
+      const j = await r.json();
+      const pretty = j.messages.map(m => `[${m.status}] ${m.toThreadId} — ${m.text} (id:${m.id})`).join("\\n\\n");
+      document.getElementById('queue').textContent = pretty || '(empty)';
+    }
+    document.getElementById('sendBtn').onclick = async () => {
+      const toThreadId = document.getElementById('toThreadId').value.trim();
+      const text = document.getElementById('text').value;
+      if(!toThreadId || !text){ alert('recipient and text required'); return; }
+      const r = await fetch('/api/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ toThreadId, text })
+      });
+      const j = await r.json();
+      if(j.ok) {
+        alert('Queued: ' + j.id);
+        loadQueue();
+      } else {
+        alert('Error: ' + (j.error || 'unknown'));
+      }
+    }
+    loadQueue();
+    setInterval(loadQueue, 5000);
+  </script>
+</body>
+</html>
